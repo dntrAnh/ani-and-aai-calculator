@@ -1,0 +1,11 @@
+.DS_Store
+.venv/
+__pycache__/
+*.pyc
+
+# Local generated databases
+ani_results.db
+aai_results.db
+
+# Generated output artifacts
+outputs/*.png

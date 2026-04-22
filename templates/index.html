@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Genome Identity Comparator</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #f0f4f8;
+      color: #1a202c;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem 4rem;
+    }
+
+    header { text-align: center; margin-bottom: 2rem; }
+    header h1 { font-size: 1.9rem; font-weight: 700; color: #2d3748; }
+    header p  { margin-top: .4rem; color: #718096; font-size: .95rem; }
+
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.08);
+      padding: 2rem;
+      width: 100%;
+      max-width: 700px;
+    }
+
+    /* ── Tabs ──────────────────────────────────────────────── */
+    .tabs {
+      display: flex;
+      border-bottom: 2px solid #e2e8f0;
+      margin-bottom: 1.5rem;
+    }
+    .tab-btn {
+      flex: 1;
+      padding: .6rem 1rem;
+      font-size: .95rem;
+      font-weight: 600;
+      background: none;
+      border: none;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+      cursor: pointer;
+      color: #718096;
+      transition: color .15s, border-color .15s;
+    }
+    .tab-btn.active { color: #3182ce; border-bottom-color: #3182ce; }
+    .tab-btn:hover:not(.active) { color: #2d3748; }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── Drop zone ─────────────────────────────────────────── */
+    .drop-zone {
+      border: 2px dashed #90cdf4;
+      border-radius: 10px;
+      padding: 2.2rem 1rem;
+      text-align: center;
+      cursor: pointer;
+      transition: background .15s, border-color .15s;
+    }
+    .drop-zone.drag-over { background: #ebf8ff; border-color: #3182ce; }
+    .drop-zone svg { width: 2.8rem; height: 2.8rem; color: #63b3ed; margin-bottom: .6rem; }
+    .drop-zone p { color: #4a5568; font-size: .9rem; }
+    .drop-zone span { color: #3182ce; font-weight: 600; }
+    .drop-zone input[type=file] { display: none; }
+
+    /* ── File list ─────────────────────────────────────────── */
+    .file-list { margin-top: .9rem; list-style: none; }
+    .file-list li {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: .4rem .6rem;
+      border-radius: 6px;
+      font-size: .85rem;
+      background: #f7fafc;
+      margin-top: .3rem;
+    }
+    .file-list li .name { color: #2d3748; max-width: 70%; word-break: break-all; }
+    .file-list li .size { color: #a0aec0; font-size: .78rem; }
+    .file-list li button {
+      background: none; border: none; cursor: pointer;
+      color: #fc8181; font-size: 1rem; line-height: 1; padding: 0 .2rem;
+    }
+
+    /* ── Notice ────────────────────────────────────────────── */
+    .file-notice {
+      margin-top: .5rem;
+      font-size: .8rem;
+      color: #e53e3e;
+      display: none;
+    }
+
+    /* ── Multi-file note ───────────────────────────────────── */
+    .multi-note {
+      margin-top: .7rem;
+      padding: .5rem .75rem;
+      background: #ebf8ff;
+      border-left: 3px solid #63b3ed;
+      border-radius: 4px;
+      font-size: .8rem;
+      color: #2b6cb0;
+    }
+
+    /* ── Submit ────────────────────────────────────────────── */
+    .run-btn {
+      margin-top: 1.4rem;
+      width: 100%;
+      padding: .72rem;
+      background: #3182ce;
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    .run-btn:disabled { background: #90cdf4; cursor: not-allowed; }
+    .run-btn:not(:disabled):hover { background: #2b6cb0; }
+
+    /* ── Status / spinner ──────────────────────────────────── */
+    .status {
+      margin-top: .9rem;
+      font-size: .88rem;
+      color: #4a5568;
+      text-align: center;
+      min-height: 1.3em;
+    }
+    .spinner {
+      display: inline-block;
+      width: 1em; height: 1em;
+      border: 2px solid #bee3f8;
+      border-top-color: #3182ce;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      vertical-align: middle;
+      margin-right: .4em;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Error ─────────────────────────────────────────────── */
+    .error-box {
+      margin-top: .9rem;
+      background: #fff5f5;
+      border: 1px solid #fed7d7;
+      border-radius: 8px;
+      padding: .7rem .9rem;
+      color: #c53030;
+      font-size: .85rem;
+      white-space: pre-wrap;
+      display: none;
+    }
+
+    /* ── Result area ───────────────────────────────────────── */
+    .result { margin-top: 1.5rem; display: none; }
+
+    .result h2 {
+      font-size: .95rem;
+      font-weight: 600;
+      color: #2d3748;
+      margin-bottom: .6rem;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+
+    .heatmap-wrap { text-align: center; }
+    .heatmap-wrap img {
+      max-width: 100%;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,.12);
+    }
+    .dl-link {
+      display: inline-block;
+      margin-top: .5rem;
+      font-size: .85rem;
+      color: #3182ce;
+      text-decoration: none;
+    }
+    .dl-link:hover { text-decoration: underline; }
+
+    /* ── Identity table ────────────────────────────────────── */
+    .table-wrap {
+      margin-top: 1.6rem;
+      overflow-x: auto;
+    }
+    .id-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .84rem;
+    }
+    .id-table th, .id-table td {
+      border: 1px solid #e2e8f0;
+      padding: .42rem .6rem;
+      text-align: center;
+      white-space: nowrap;
+    }
+    .id-table thead th {
+      background: #ebf8ff;
+      color: #2b6cb0;
+      font-weight: 600;
+    }
+    .id-table thead th:first-child {
+      background: #f7fafc;
+      color: #718096;
+      font-style: italic;
+      text-align: left;
+    }
+    .id-table tbody th {
+      background: #f7fafc;
+      color: #2d3748;
+      font-weight: 600;
+      text-align: left;
+    }
+    .id-table td.self       { background: #c6f6d5; color: #276749; font-weight: 700; }
+    .id-table td.identical  { background: #9ae6b4; color: #22543d; font-weight: 600; }
+    .id-table td.high       { background: #e6fffa; color: #234e52; }
+    .id-table td.mid        { background: #fefcbf; color: #744210; }
+    .id-table td.low        { background: #fff5f5; color: #742a2a; }
+    .id-table td.value-cell {
+      cursor: help;
+      text-decoration: underline dotted rgba(45, 55, 72, .35);
+      text-underline-offset: 2px;
+    }
+
+    .value-tooltip {
+      position: fixed;
+      z-index: 1000;
+      display: none;
+      pointer-events: none;
+      background: rgba(26, 32, 44, .95);
+      color: #f7fafc;
+      border-radius: 6px;
+      padding: .35rem .5rem;
+      font-size: .78rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      white-space: nowrap;
+      max-width: min(80vw, 600px);
+      overflow-x: auto;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, .2);
+    }
+
+    .history-wrap { margin-top: 1.2rem; }
+    .history-list { list-style: none; display: grid; gap: .45rem; }
+    .history-list li {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: .6rem;
+      padding: .45rem .6rem;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      background: #f8fafc;
+      font-size: .8rem;
+      color: #2d3748;
+    }
+    .history-list .meta {
+      display: flex;
+      flex-direction: column;
+      gap: .15rem;
+      min-width: 0;
+    }
+    .history-list .meta .id { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+    .history-list .meta .time { color: #718096; font-size: .76rem; }
+    .history-list button {
+      border: none;
+      border-radius: 6px;
+      background: #2b6cb0;
+      color: #fff;
+      font-size: .76rem;
+      padding: .3rem .52rem;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .history-list button:hover { background: #2c5282; }
+    .history-empty { color: #718096; font-size: .8rem; }
+
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Genome Identity Comparator</h1>
+    <p>Upload 2 or more genome files and compare them with ANI or AAI — supports any number of genomes.</p>
+  </header>
+
+  <div class="card">
+    <!-- Tab buttons -->
+    <div class="tabs" role="tablist">
+      <button class="tab-btn active" role="tab" data-tab="ani">
+        ANI &nbsp;<small style="font-weight:400;opacity:.7">(nucleotide FASTA)</small>
+      </button>
+      <button class="tab-btn" role="tab" data-tab="aai">
+        AAI &nbsp;<small style="font-weight:400;opacity:.7">(protein FASTA)</small>
+      </button>
+    </div>
+
+    <!-- ANI panel -->
+    <div class="tab-panel active" id="panel-ani">
+      <div class="drop-zone" id="dz-ani" role="button" tabindex="0"
+           aria-label="Upload nucleotide FASTA files for ANI">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+             stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5
+               m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
+        </svg>
+        <p>Drag &amp; drop nucleotide FASTA files here, or <span>click to browse</span></p>
+        <p style="font-size:.78rem;color:#a0aec0;margin-top:.3rem">Accepted: .fa &nbsp;.fas &nbsp;.fasta &nbsp;.fna</p>
+        <input type="file" multiple accept=".fa,.fas,.fasta,.fna" />
+      </div>
+      <ul class="file-list" id="fl-ani"></ul>
+      <p class="file-notice" id="fn-ani">Please upload at least 2 files.</p>
+      <p class="multi-note">You can upload as many genomes as you like — all pairwise ANI values are calculated at once.</p>
+      <button class="run-btn" id="btn-ani" disabled>Run ANI Analysis</button>
+      <div class="status"  id="st-ani"></div>
+      <div class="error-box" id="err-ani"></div>
+      <div class="result"  id="res-ani">
+        <div class="heatmap-wrap">
+          <h2>ANI Heatmap</h2>
+          <img id="img-ani" src="" alt="ANI heatmap" />
+          <br/><a class="dl-link" id="dl-ani" href="" download="ani_heatmap.png">Download PNG</a>
+        </div>
+        <div class="table-wrap">
+          <h2>Identity Table (%)</h2>
+          <table class="id-table">
+            <thead id="th-ani"></thead>
+            <tbody id="tb-ani"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- AAI panel -->
+    <div class="tab-panel" id="panel-aai">
+      <div class="drop-zone" id="dz-aai" role="button" tabindex="0"
+           aria-label="Upload protein FASTA files for AAI">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+             stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5
+               m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
+        </svg>
+        <p>Drag &amp; drop protein FASTA files here, or <span>click to browse</span></p>
+        <p style="font-size:.78rem;color:#a0aec0;margin-top:.3rem">Accepted: .faa &nbsp;.fa &nbsp;.fas &nbsp;.fasta</p>
+        <input type="file" multiple accept=".faa,.fa,.fas,.fasta" />
+      </div>
+      <ul class="file-list" id="fl-aai"></ul>
+      <p class="file-notice" id="fn-aai">Please upload at least 2 files.</p>
+      <p class="multi-note">Upload protein FASTA files for any number of genomes — FastAAI compares all pairs simultaneously.</p>
+      <button class="run-btn" id="btn-aai" disabled>Run AAI Analysis</button>
+      <div class="status"  id="st-aai"></div>
+      <div class="error-box" id="err-aai"></div>
+      <div class="result"  id="res-aai">
+        <div class="heatmap-wrap">
+          <h2>AAI Heatmap</h2>
+          <img id="img-aai" src="" alt="AAI heatmap" />
+          <br/><a class="dl-link" id="dl-aai" href="" download="aai_heatmap.png">Download PNG</a>
+        </div>
+        <div class="table-wrap">
+          <h2>Identity Table (%)</h2>
+          <table class="id-table">
+            <thead id="th-aai"></thead>
+            <tbody id="tb-aai"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div><!-- .card -->
+  <div id="value-tooltip" class="value-tooltip" aria-hidden="true"></div>
+
+  <script>
+    // ── Tabs ──────────────────────────────────────────────────────────────────
+    document.querySelectorAll(".tab-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+        document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
+        btn.classList.add("active");
+        document.getElementById("panel-" + btn.dataset.tab).classList.add("active");
+      });
+    });
+
+    // ── Shared helpers ────────────────────────────────────────────────────────
+    const VALID_ANI = new Set([".fa", ".fas", ".fasta", ".fna"]);
+    const VALID_AAI = new Set([".faa", ".fa", ".fas", ".fasta"]);
+
+    // Enveomics-style identity thresholds
+    // ANI: ≈100% identical strains/clones | ≥95% same species | ≥80% same genus | <80% different genera
+    const THRESHOLDS_ANI = { identical: 99, sameSpecies: 95, sameGenus: 80 };
+    // AAI mirrors ANI bands per Enveomics conventions
+    const THRESHOLDS_AAI = { identical: 99, sameSpecies: 95, sameGenus: 80 };
+
+    function getExt(name) {
+      const i = name.lastIndexOf(".");
+      return i >= 0 ? name.slice(i).toLowerCase() : "";
+    }
+    function fmtSize(bytes) {
+      if (bytes < 1024) return bytes + " B";
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+      return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+    }
+
+    function cellClass(val, isSelf, thresholds) {
+      if (isSelf)                            return "self";
+      if (val === null)                      return "low";
+      if (val >= thresholds.identical)       return "identical";
+      if (val >= thresholds.sameSpecies)     return "high";
+      if (val >= thresholds.sameGenus)       return "mid";
+      return "low";
+    }
+
+    function renderTable(table, thead, tbody, thresholds) {
+      const hRow = document.createElement("tr");
+      const corner = document.createElement("th");
+      corner.textContent = "Query \\ Reference";
+      hRow.appendChild(corner);
+      table.columns.forEach(col => {
+        const th = document.createElement("th");
+        th.textContent = col;
+        hRow.appendChild(th);
+      });
+      thead.innerHTML = "";
+      thead.appendChild(hRow);
+
+      tbody.innerHTML = "";
+      table.index.forEach((rowName, r) => {
+        const tr = document.createElement("tr");
+        const th = document.createElement("th");
+        th.textContent = rowName;
+        tr.appendChild(th);
+        table.data[r].forEach((val, c) => {
+          const td = document.createElement("td");
+          td.className = cellClass(val, r === c, thresholds);
+          if (val !== null) {
+            td.textContent = val.toFixed(2) + "%";
+            td.classList.add("value-cell");
+            td.dataset.fullValue = `${String(val)}%`;
+          } else {
+            td.textContent = "-";
+          }
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+    }
+
+    function installValueTooltip() {
+      const tooltip = document.getElementById("value-tooltip");
+
+      function hideTooltip() {
+        tooltip.style.display = "none";
+      }
+
+      function positionTooltip(evt) {
+        const offset = 12;
+        const tipWidth = tooltip.offsetWidth;
+        const tipHeight = tooltip.offsetHeight;
+
+        let left = evt.clientX + offset;
+        let top = evt.clientY + offset;
+
+        if (left + tipWidth > window.innerWidth - 8) {
+          left = evt.clientX - tipWidth - offset;
+        }
+        if (top + tipHeight > window.innerHeight - 8) {
+          top = evt.clientY - tipHeight - offset;
+        }
+
+        tooltip.style.left = `${Math.max(8, left)}px`;
+        tooltip.style.top = `${Math.max(8, top)}px`;
+      }
+
+      document.addEventListener("mouseover", evt => {
+        const cell = evt.target.closest(".id-table td[data-full-value]");
+        if (!cell) return;
+        tooltip.textContent = cell.dataset.fullValue;
+        tooltip.style.display = "block";
+        positionTooltip(evt);
+      });
+
+      document.addEventListener("mousemove", evt => {
+        if (tooltip.style.display !== "block") return;
+        positionTooltip(evt);
+      });
+
+      document.addEventListener("mouseout", evt => {
+        const cell = evt.target.closest(".id-table td[data-full-value]");
+        if (!cell) return;
+        if (evt.relatedTarget && cell.contains(evt.relatedTarget)) return;
+        hideTooltip();
+      });
+
+      document.addEventListener("scroll", hideTooltip, true);
+    }
+
+    // ── Panel wiring ──────────────────────────────────────────────────────────
+    function wirePanel({ panelId, dzId, flId, fnId, btnId, stId, errId,
+                         resId, imgId, dlId, thId, tbId, validExt, endpoint,
+                         imgDownloadName, thresholds }) {
+      const dz       = document.getElementById(dzId);
+      const fileInp  = dz.querySelector("input[type=file]");
+      const fl       = document.getElementById(flId);
+      const fn       = document.getElementById(fnId);
+      const btn      = document.getElementById(btnId);
+      const st       = document.getElementById(stId);
+      const errBox   = document.getElementById(errId);
+      const res      = document.getElementById(resId);
+      const img      = document.getElementById(imgId);
+      const dl       = document.getElementById(dlId);
+      const thead    = document.getElementById(thId);
+      const tbody    = document.getElementById(tbId);
+
+      let files = [];
+
+      function refreshUI() {
+        fl.innerHTML = "";
+        files.forEach((f, i) => {
+          const li = document.createElement("li");
+          li.innerHTML = `
+            <span class="name">${f.name}</span>
+            <span class="size">${fmtSize(f.size)}</span>
+            <button type="button" data-idx="${i}" title="Remove">✕</button>`;
+          fl.appendChild(li);
+        });
+        fl.querySelectorAll("button").forEach(b =>
+          b.addEventListener("click", () => { files.splice(+b.dataset.idx, 1); refreshUI(); })
+        );
+        const ok = files.length >= 2;
+        btn.disabled = !ok;
+        fn.style.display = (files.length > 0 && !ok) ? "block" : "none";
+      }
+
+      function addFiles(arr) {
+        for (const f of arr) {
+          if (!validExt.has(getExt(f.name))) continue;
+          if (!files.find(e => e.name === f.name && e.size === f.size)) files.push(f);
+        }
+        refreshUI();
+      }
+
+      dz.addEventListener("click",   () => fileInp.click());
+      dz.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") fileInp.click(); });
+      fileInp.addEventListener("change", () => { addFiles([...fileInp.files]); fileInp.value = ""; });
+      dz.addEventListener("dragover",  e => { e.preventDefault(); dz.classList.add("drag-over"); });
+      dz.addEventListener("dragleave", () => dz.classList.remove("drag-over"));
+      dz.addEventListener("drop", e => {
+        e.preventDefault(); dz.classList.remove("drag-over");
+        addFiles([...e.dataTransfer.files]);
+      });
+
+      btn.addEventListener("click", async () => {
+        errBox.style.display = "none";
+        res.style.display    = "none";
+        st.innerHTML = `<span class="spinner"></span>Running analysis — this may take a minute…`;
+        btn.disabled = true;
+
+        const fd = new FormData();
+        files.forEach(f => fd.append("genomes", f));
+
+        try {
+          const response = await fetch(endpoint, { method: "POST", body: fd });
+          const data     = await response.json();
+          if (!response.ok) throw new Error(data.error || response.statusText);
+
+          img.src   = "data:image/png;base64," + data.image;
+          dl.href   = img.src;
+          dl.download = imgDownloadName.replace("{id}", data.run_id);
+
+          renderTable(data.table, thead, tbody, thresholds);
+
+          st.textContent    = "";
+          res.style.display = "block";
+        } catch (err) {
+          st.textContent       = "";
+          errBox.textContent   = err.message;
+          errBox.style.display = "block";
+        } finally {
+          btn.disabled = files.length < 2;
+        }
+      });
+    }
+
+    // Wire ANI panel
+    wirePanel({
+      panelId: "panel-ani", dzId: "dz-ani", flId: "fl-ani", fnId: "fn-ani",
+      btnId: "btn-ani", stId: "st-ani", errId: "err-ani", resId: "res-ani",
+      imgId: "img-ani", dlId: "dl-ani", thId: "th-ani", tbId: "tb-ani",
+      validExt: VALID_ANI, endpoint: "/analyze",
+      imgDownloadName: "ani_heatmap_{id}.png",
+      thresholds: THRESHOLDS_ANI,
+    });
+
+    // Wire AAI panel
+    wirePanel({
+      panelId: "panel-aai", dzId: "dz-aai", flId: "fl-aai", fnId: "fn-aai",
+      btnId: "btn-aai", stId: "st-aai", errId: "err-aai", resId: "res-aai",
+      imgId: "img-aai", dlId: "dl-aai", thId: "th-aai", tbId: "tb-aai",
+      validExt: VALID_AAI, endpoint: "/analyze-aai",
+      imgDownloadName: "aai_heatmap_{id}.png",
+      thresholds: THRESHOLDS_AAI,
+    });
+
+    installValueTooltip();
+  </script>
+</body>
+</html>
