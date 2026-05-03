@@ -14,7 +14,7 @@ You can use this repo in two ways:
 - **Command line scripts** for ANI or AAI analysis
 - **Flask web app** for upload-and-visualize workflow in a browser
 
-Outputs are PNG heatmaps saved under `outputs/`.
+Outputs are PNG heatmaps and Excel workbooks saved under `outputs/`.
 
 ## How ANI Works Here
 
@@ -58,7 +58,7 @@ From the project root:
 python3 -m venv .venv
 source .venv/bin/activate
 pip install --upgrade pip
-pip install flask biopython numpy pandas matplotlib seaborn pyani-plus
+pip install flask biopython numpy pandas matplotlib seaborn pyani-plus openpyxl
 ```
 
 ### ANI tool dependency note
@@ -80,9 +80,10 @@ source .venv/bin/activate
 python ani_calculation.py fasta_files/ -m fastani -d ani_results.db
 ```
 
-ANI heatmap output:
+ANI outputs:
 
 - `outputs/ani_heatmap.png`
+- `outputs/ani_results.xlsx`
 
 ### AAI from protein FASTAs
 
@@ -91,9 +92,10 @@ source .venv/bin/activate
 python aai_calculation.py protein_files/ --output outputs/aai_heatmap.png
 ```
 
-AAI heatmap output:
+AAI outputs:
 
 - `outputs/aai_heatmap.png`
+- `outputs/aai_results.xlsx`
 
 ## Run Locally (Web App)
 

@@ -194,6 +194,9 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument("-o", "--output", type=Path,
                    default=Path("outputs/aai_heatmap.png"),
                    help="Output heatmap PNG (default: outputs/aai_heatmap.png).")
+    p.add_argument("--excel-output", type=Path,
+                   default=Path("outputs/aai_results.xlsx"),
+                   help="Output Excel workbook (default: outputs/aai_results.xlsx).")
     return p.parse_args()
 
 
@@ -227,4 +230,6 @@ if __name__ == "__main__":
     saved = generate_heatmap.generate_from_df(
         df, args.output, title="AAI Identity (%)", vmin=0, vmax=100
     )
+    excel_saved = generate_heatmap.export_df_to_excel(df, args.excel_output)
     print(f"Heatmap saved: {saved}")
+    print(f"Excel saved: {excel_saved}")

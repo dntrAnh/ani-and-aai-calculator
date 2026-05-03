@@ -19,6 +19,9 @@ import pandas as pd
 import seaborn as sns
 
 
+EXCEL_NUMBER_FORMAT = "0.############################"
+
+
 def load_identity_matrix(db_path: Path, run_id: int | None = None) -> pd.DataFrame:
     """Return a labelled ANI identity DataFrame for the requested run.
 
@@ -167,6 +170,43 @@ def generate_from_df(
     """
     return plot_heatmap(df, output_path, title=title, vmin=vmin, vmax=vmax,
                         cbar_label=cbar_label)
+
+
+def export_df_to_excel(
+    df: pd.DataFrame,
+    output_path: Path,
+    sheet_name: str = "Identity Matrix",
+    index_label: str = "Query / Reference",
+) -> Path:
+    """Write an identity matrix to an Excel workbook without heatmap styling.
+
+    Values are written as raw numeric cells and given a non-rounding display format
+    so Excel shows the full stored value rather than forcing two decimals.
+    """
+    try:
+        from openpyxl import load_workbook
+    except ImportError as exc:
+        raise RuntimeError(
+            "Excel export requires the 'openpyxl' package. Install it with 'pip install openpyxl'."
+        ) from exc
+
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with pd.ExcelWriter(output_path, engine="openpyxl") as writer:
+        df.to_excel(writer, sheet_name=sheet_name, index_label=index_label)
+
+    workbook = load_workbook(output_path)
+    worksheet = workbook[sheet_name]
+    worksheet.freeze_panes = "B2"
+
+    for row in worksheet.iter_rows(min_row=2, min_col=2):
+        for cell in row:
+            if isinstance(cell.value, (int, float)):
+                cell.number_format = EXCEL_NUMBER_FORMAT
+
+    workbook.save(output_path)
+    return output_path.resolve()
 
 
 # ---------------------------------------------------------------------------

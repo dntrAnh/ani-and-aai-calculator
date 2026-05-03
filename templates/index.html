@@ -326,6 +326,7 @@
           <h2>ANI Heatmap</h2>
           <img id="img-ani" src="" alt="ANI heatmap" />
           <br/><a class="dl-link" id="dl-ani" href="" download="ani_heatmap.png">Download PNG</a>
+          <br/><a class="dl-link" id="xl-ani" href="" download="ani_results.xlsx">Download Excel</a>
         </div>
         <div class="table-wrap">
           <h2>Identity Table (%)</h2>
@@ -362,6 +363,7 @@
           <h2>AAI Heatmap</h2>
           <img id="img-aai" src="" alt="AAI heatmap" />
           <br/><a class="dl-link" id="dl-aai" href="" download="aai_heatmap.png">Download PNG</a>
+          <br/><a class="dl-link" id="xl-aai" href="" download="aai_results.xlsx">Download Excel</a>
         </div>
         <div class="table-wrap">
           <h2>Identity Table (%)</h2>
@@ -438,7 +440,7 @@
           const td = document.createElement("td");
           td.className = cellClass(val, r === c, thresholds);
           if (val !== null) {
-            td.textContent = val.toFixed(2) + "%";
+            td.textContent = String(val) + "%";
             td.classList.add("value-cell");
             td.dataset.fullValue = `${String(val)}%`;
           } else {
@@ -501,8 +503,8 @@
 
     // ── Panel wiring ──────────────────────────────────────────────────────────
     function wirePanel({ panelId, dzId, flId, fnId, btnId, stId, errId,
-                         resId, imgId, dlId, thId, tbId, validExt, endpoint,
-                         imgDownloadName, thresholds }) {
+               resId, imgId, dlId, xlId, thId, tbId, validExt, endpoint,
+               imgDownloadName, excelDownloadName, thresholds }) {
       const dz       = document.getElementById(dzId);
       const fileInp  = dz.querySelector("input[type=file]");
       const fl       = document.getElementById(flId);
@@ -513,6 +515,7 @@
       const res      = document.getElementById(resId);
       const img      = document.getElementById(imgId);
       const dl       = document.getElementById(dlId);
+      const xl       = document.getElementById(xlId);
       const thead    = document.getElementById(thId);
       const tbody    = document.getElementById(tbId);
 
@@ -571,6 +574,8 @@
           img.src   = "data:image/png;base64," + data.image;
           dl.href   = img.src;
           dl.download = imgDownloadName.replace("{id}", data.run_id);
+          xl.href = data.excel_download_url || "#";
+          xl.download = excelDownloadName.replace("{id}", data.run_id);
 
           renderTable(data.table, thead, tbody, thresholds);
 
@@ -590,9 +595,10 @@
     wirePanel({
       panelId: "panel-ani", dzId: "dz-ani", flId: "fl-ani", fnId: "fn-ani",
       btnId: "btn-ani", stId: "st-ani", errId: "err-ani", resId: "res-ani",
-      imgId: "img-ani", dlId: "dl-ani", thId: "th-ani", tbId: "tb-ani",
+      imgId: "img-ani", dlId: "dl-ani", xlId: "xl-ani", thId: "th-ani", tbId: "tb-ani",
       validExt: VALID_ANI, endpoint: "/analyze",
       imgDownloadName: "ani_heatmap_{id}.png",
+      excelDownloadName: "ani_results_{id}.xlsx",
       thresholds: THRESHOLDS_ANI,
     });
 
@@ -600,9 +606,10 @@
     wirePanel({
       panelId: "panel-aai", dzId: "dz-aai", flId: "fl-aai", fnId: "fn-aai",
       btnId: "btn-aai", stId: "st-aai", errId: "err-aai", resId: "res-aai",
-      imgId: "img-aai", dlId: "dl-aai", thId: "th-aai", tbId: "tb-aai",
+      imgId: "img-aai", dlId: "dl-aai", xlId: "xl-aai", thId: "th-aai", tbId: "tb-aai",
       validExt: VALID_AAI, endpoint: "/analyze-aai",
       imgDownloadName: "aai_heatmap_{id}.png",
+      excelDownloadName: "aai_results_{id}.xlsx",
       thresholds: THRESHOLDS_AAI,
     });
 

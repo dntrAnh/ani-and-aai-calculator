@@ -68,6 +68,12 @@ def parse_args() -> argparse.Namespace:
 		action="store_true",
 		help="Do not pass --create-db, even if database does not exist.",
 	)
+	parser.add_argument(
+		"--excel-output",
+		type=Path,
+		default=Path("outputs/ani_results.xlsx"),
+		help="Output Excel workbook path (default: outputs/ani_results.xlsx).",
+	)
 	return parser.parse_args()
 
 
@@ -226,9 +232,14 @@ def main() -> int:
 	heatmap_path = output_dir / "ani_heatmap.png"
 	try:
 		saved = generate_heatmap.generate(args.database, heatmap_path)
+		excel_saved = generate_heatmap.export_df_to_excel(
+			generate_heatmap.load_identity_matrix(args.database),
+			args.excel_output,
+		)
 		print(f"Heatmap saved: {saved}")
+		print(f"Excel saved: {excel_saved}")
 	except Exception as exc:
-		print(f"Warning: could not generate heatmap: {exc}", file=sys.stderr)
+		print(f"Warning: could not generate heatmap or Excel workbook: {exc}", file=sys.stderr)
 
 	return 0
 
